@@ -1,0 +1,912 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { 
+  ArrowLeftRight, 
+  History, 
+  Moon, 
+  Sun, 
+  RefreshCw, 
+  TrendingUp,
+  AlertCircle,
+  CheckCircle2,
+  LineChart,
+  X,
+  Trash2,
+  LogOut,
+  User,
+  ArrowLeft
+} from 'lucide-react';
+import { clsx } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+import { LineChart as RechartsLineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import Login from './Login';
+import AdminLogin from './AdminLogin';
+import AdminDashboard from './AdminDashboard';
+import Signup from './Signup';
+import SpecialFeaturesPage from './SpecialFeaturesPage';
+import { addConversion, getActiveCurrencies, getRateHistory, getRates, logoutUser } from './apiStore';
+
+// Utility for tailwind classes
+function cn(...inputs) {
+  return twMerge(clsx(inputs));
+}
+
+const LEGACY_CURRENCIES = [
+  { code: 'USD', name: 'United States Dollar', flag: '🇺🇸' },
+  { code: 'EUR', name: 'Euro', flag: '🇪🇺' },
+  { code: 'GBP', name: 'British Pound Sterling', flag: '🇬🇧' },
+  { code: 'JPY', name: 'Japanese Yen', flag: '🇯🇵' },
+  { code: 'AUD', name: 'Australian Dollar', flag: '🇦🇺' },
+  { code: 'CAD', name: 'Canadian Dollar', flag: '🇨🇦' },
+  { code: 'CHF', name: 'Swiss Franc', flag: '🇨🇭' },
+  { code: 'CNY', name: 'Chinese Yuan', flag: '🇨🇳' },
+  { code: 'INR', name: 'Indian Rupee', flag: '🇮🇳' },
+  { code: 'BRL', name: 'Brazilian Real', flag: '🇧🇷' },
+  { code: 'ZAR', name: 'South African Rand', flag: '🇿🇦' },
+  { code: 'MXN', name: 'Mexican Peso', flag: '🇲🇽' },
+  { code: 'SGD', name: 'Singapore Dollar', flag: '🇸🇬' },
+  { code: 'HKD', name: 'Hong Kong Dollar', flag: '🇭🇰' },
+  { code: 'KRW', name: 'South Korean Won', flag: '🇰🇷' },
+  { code: 'SEK', name: 'Swedish Krona', flag: '🇸🇪' },
+  { code: 'NOK', name: 'Norwegian Krone', flag: '🇳🇴' },
+  { code: 'DKK', name: 'Danish Krone', flag: '🇩🇰' },
+  { code: 'NZD', name: 'New Zealand Dollar', flag: '🇳🇿' },
+  { code: 'RUB', name: 'Russian Ruble', flag: '🇷🇺' },
+  { code: 'TRY', name: 'Turkish Lira', flag: '🇹🇷' },
+  { code: 'PLN', name: 'Polish Zloty', flag: '🇵🇱' },
+  { code: 'THB', name: 'Thai Baht', flag: '🇹🇭' },
+  { code: 'IDR', name: 'Indonesian Rupiah', flag: '🇮🇩' },
+  { code: 'MYR', name: 'Malaysian Ringgit', flag: '🇲🇾' },
+  { code: 'PHP', name: 'Philippine Peso', flag: '🇵🇭' },
+  { code: 'AED', name: 'UAE Dirham', flag: '🇦🇪' },
+  { code: 'SAR', name: 'Saudi Riyal', flag: '🇸🇦' },
+  { code: 'EGP', name: 'Egyptian Pound', flag: '🇪🇬' },
+  { code: 'VND', name: 'Vietnamese Dong', flag: '🇻🇳' },
+];
+
+const CURRENCY_SYMBOLS = {
+  AED: 'DH',
+  AUD: 'A$',
+  BDT: 'Tk',
+  BRL: 'R$',
+  CAD: 'C$',
+  CHF: 'Fr',
+  CNY: 'Y',
+  DKK: 'kr',
+  EGP: 'E£',
+  EUR: 'EUR',
+  GBP: 'GBP',
+  HKD: 'HK$',
+  IDR: 'Rp',
+  INR: 'Rs',
+  JPY: 'JPY',
+  KRW: 'WON',
+  MXN: 'MX$',
+  MYR: 'RM',
+  NOK: 'kr',
+  NZD: 'NZ$',
+  PHP: 'PHP',
+  PLN: 'PLN',
+  RUB: 'RUB',
+  SAR: 'SR',
+  SEK: 'kr',
+  SGD: 'S$',
+  THB: 'THB',
+  TRY: 'TRY',
+  USD: 'USD',
+  VND: 'VND',
+  ZAR: 'R',
+};
+
+const CURRENCY_IMAGE_PAGES = {
+  AED: 'United_Arab_Emirates_dirham',
+  AUD: 'Australian_dollar',
+  BDT: 'Bangladeshi_taka',
+  BRL: 'Brazilian_real',
+  CAD: 'Canadian_dollar',
+  CHF: 'Swiss_franc',
+  CNY: 'Renminbi',
+  DKK: 'Danish_krone',
+  EGP: 'Egyptian_pound',
+  EUR: 'Euro',
+  GBP: 'Pound_sterling',
+  HKD: 'Hong_Kong_dollar',
+  IDR: 'Indonesian_rupiah',
+  INR: 'Indian_rupee',
+  JPY: 'Japanese_yen',
+  KRW: 'South_Korean_won',
+  MXN: 'Mexican_peso',
+  MYR: 'Malaysian_ringgit',
+  NOK: 'Norwegian_krone',
+  NZD: 'New_Zealand_dollar',
+  PHP: 'Philippine_peso',
+  PLN: 'Polish_zloty',
+  RUB: 'Russian_ruble',
+  SAR: 'Saudi_riyal',
+  SEK: 'Swedish_krona',
+  SGD: 'Singapore_dollar',
+  THB: 'Thai_baht',
+  TRY: 'Turkish_lira',
+  USD: 'United_States_dollar',
+  VND: 'Vietnamese_dong',
+  ZAR: 'South_African_rand',
+};
+
+function getCurrencyVisual(currency) {
+  const code = currency?.code || 'USD';
+  const countryCode = (currency?.flag || code.slice(0, 2) || 'US').toUpperCase();
+  const symbol = CURRENCY_SYMBOLS[code] || code;
+  const title = currency?.name || code;
+  const subtitle = `${countryCode} | ${code}`;
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360">
+      <defs>
+        <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#0f766e"/>
+          <stop offset="50%" stop-color="#0f172a"/>
+          <stop offset="100%" stop-color="#1d4ed8"/>
+        </linearGradient>
+      </defs>
+      <rect width="640" height="360" rx="30" fill="url(#bg)"/>
+      <circle cx="520" cy="92" r="90" fill="#67e8f9" opacity="0.16"/>
+      <circle cx="126" cy="286" r="102" fill="#bbf7d0" opacity="0.12"/>
+      <rect x="30" y="30" width="580" height="300" rx="24" fill="none" stroke="#dbeafe" stroke-opacity="0.65" stroke-width="2"/>
+      <text x="52" y="88" fill="#e0f2fe" font-family="Arial, sans-serif" font-size="34" font-weight="700">${title}</text>
+      <text x="52" y="126" fill="#bfdbfe" font-family="Arial, sans-serif" font-size="22">${subtitle}</text>
+      <text x="52" y="236" fill="#ffffff" font-family="Georgia, serif" font-size="88" font-weight="700">${symbol}</text>
+      <text x="52" y="290" fill="#d1fae5" font-family="Arial, sans-serif" font-size="28">Special currency card</text>
+      <text x="470" y="290" fill="#f8fafc" font-family="Arial, sans-serif" font-size="30" font-weight="700">${code}</text>
+    </svg>
+  `;
+
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+}
+
+async function fetchCurrencyPhoto(currency) {
+  const code = currency?.code || 'USD';
+  const pageTitle = CURRENCY_IMAGE_PAGES[code] || currency?.name?.replace(/\s+/g, '_');
+
+  if (!pageTitle) {
+    return null;
+  }
+
+  try {
+    const response = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${pageTitle}`);
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+    return data.originalimage?.source || data.thumbnail?.source || null;
+  } catch (err) {
+    console.error('Failed to fetch currency photo:', err);
+    return null;
+  }
+}
+
+function formatGdpLabel(value) {
+  if (value >= 1_000_000_000_000) {
+    return `$${(value / 1_000_000_000_000).toFixed(1)}T`;
+  }
+
+  if (value >= 1_000_000_000) {
+    return `$${(value / 1_000_000_000).toFixed(1)}B`;
+  }
+
+  return `$${Number(value || 0).toFixed(0)}`;
+}
+
+function formatSplitAmount(value) {
+  return Number(value || 0).toFixed(2);
+}
+
+async function fetchGdpHistory(currency) {
+  const countryCode = (currency?.flag || currency?.code?.slice(0, 2) || '').toUpperCase();
+
+  if (!countryCode) {
+    return [];
+  }
+
+  try {
+    const response = await fetch(
+      `https://api.worldbank.org/v2/country/${countryCode}/indicator/NY.GDP.MKTP.CD?format=json&per_page=12`
+    );
+
+    if (!response.ok) {
+      return [];
+    }
+
+    const data = await response.json();
+    const rows = Array.isArray(data?.[1]) ? data[1] : [];
+
+    return rows
+      .filter((entry) => entry?.value)
+      .map((entry) => ({
+        year: entry.date,
+        value: Number(entry.value),
+      }))
+      .sort((a, b) => Number(a.year) - Number(b.year))
+      .slice(-8);
+  } catch (err) {
+    console.error('Failed to fetch GDP history:', err);
+    return [];
+  }
+}
+
+function App() {
+  const [amount, setAmount] = useState(1);
+  const [fromCurrency, setFromCurrency] = useState('USD');
+  const [toCurrency, setToCurrency] = useState('EUR');
+  const [currencies, setCurrencies] = useState([]);
+  const [exchangeRate, setExchangeRate] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const saved = localStorage.getItem('theme');
+    return saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
+  const [history, setHistory] = useState(() => {
+    const saved = localStorage.getItem('conversionHistory');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [showHistoryChart, setShowHistoryChart] = useState(false);
+  const [historyData, setHistoryData] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState(null);
+  const [user, setUser] = useState(() => {
+    const saved = localStorage.getItem('user');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [admin, setAdmin] = useState(() => {
+    const saved = localStorage.getItem('admin');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [showAdminLogin, setShowAdminLogin] = useState(false);
+  const [showSignup, setShowSignup] = useState(false);
+  const [conversionSuccess, setConversionSuccess] = useState(null);
+  const [splitAmount, setSplitAmount] = useState(120);
+  const [splitCurrency, setSplitCurrency] = useState('USD');
+  const [splitPeople, setSplitPeople] = useState(3);
+  const [splitTargets, setSplitTargets] = useState(['USD', 'EUR', 'INR']);
+  const [splitRates, setSplitRates] = useState({});
+  const [splitLoading, setSplitLoading] = useState(false);
+  const [splitError, setSplitError] = useState(null);
+  const [activePage, setActivePage] = useState('converter');
+
+  // Toggle Theme
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [isDarkMode]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchCurrencies = async () => {
+      try {
+        const nextCurrencies = await getActiveCurrencies();
+        if (!isMounted) return;
+        setCurrencies(nextCurrencies);
+
+        if (!nextCurrencies.some((currency) => currency.code === fromCurrency) && nextCurrencies.length > 0) {
+          setFromCurrency(nextCurrencies[0].code);
+        }
+
+        if (!nextCurrencies.some((currency) => currency.code === toCurrency)) {
+          const fallbackCurrency = nextCurrencies.find((currency) => currency.code !== fromCurrency) || nextCurrencies[0];
+          if (fallbackCurrency) {
+            setToCurrency(fallbackCurrency.code);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch currencies:', err);
+      }
+    };
+
+    fetchCurrencies();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [fromCurrency, toCurrency]);
+
+  // Fetch Exchange Rate
+  const fetchRate = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await getRates(fromCurrency);
+      const rate = response.rates[toCurrency];
+      setExchangeRate(rate);
+    } catch (err) {
+      setError('Offline rate data is unavailable.');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, [fromCurrency, toCurrency]);
+
+  useEffect(() => {
+    fetchRate();
+  }, [fetchRate]);
+
+  // Fetch historical rates for last 30 days
+  const fetchHistory = useCallback(async () => {
+    setHistoryLoading(true);
+    setHistoryError(null);
+    try {
+      setHistoryData(await getRateHistory(fromCurrency, toCurrency));
+    } catch (err) {
+      setHistoryError('Failed to load offline history');
+      console.error(err);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [fromCurrency, toCurrency]);
+
+  const fetchSplitRates = useCallback(async () => {
+    if (!splitCurrency) {
+      return;
+    }
+
+    setSplitLoading(true);
+    setSplitError(null);
+
+    try {
+      const response = await getRates(splitCurrency);
+      setSplitRates(response.rates || {});
+    } catch (err) {
+      setSplitError('Split preview is unavailable right now.');
+      console.error(err);
+    } finally {
+      setSplitLoading(false);
+    }
+  }, [splitCurrency]);
+
+  useEffect(() => {
+    fetchSplitRates();
+  }, [fetchSplitRates]);
+
+  const handleShowHistory = () => {
+    if (!showHistoryChart) {
+      fetchHistory();
+    }
+    setShowHistoryChart(!showHistoryChart);
+  };
+
+  const clearHistory = () => {
+    setHistory([]);
+    localStorage.removeItem('conversionHistory');
+  };
+
+  const handleLogin = (userData) => {
+    setUser(userData);
+    localStorage.setItem('user', JSON.stringify(userData));
+  };
+
+  const handleLogout = async () => {
+    if (user) {
+      try {
+        await logoutUser(user.id);
+      } catch (err) {
+        console.error('Logout error:', err);
+      }
+    }
+    setUser(null);
+    localStorage.removeItem('user');
+  };
+
+  // Go back to login page without logging out (keeps user logged in)
+  const handleBackToLogin = () => {
+    setUser(null);
+    localStorage.removeItem('user');
+  };
+
+  const handleAdminLogin = (adminData) => {
+    setAdmin(adminData);
+    localStorage.setItem('admin', JSON.stringify(adminData));
+    setShowAdminLogin(false);
+  };
+
+  const handleAdminLogout = () => {
+    setAdmin(null);
+    localStorage.removeItem('admin');
+  };
+
+  // Show admin dashboard if admin is logged in
+  if (admin) {
+    return <AdminDashboard admin={admin} onLogout={handleAdminLogout} />;
+  }
+
+  // Show admin login page
+  if (showAdminLogin) {
+    return <AdminLogin onLogin={handleAdminLogin} onBack={() => setShowAdminLogin(false)} />;
+  }
+
+  if (showSignup) {
+    return <Signup onSignupSuccess={() => setShowSignup(false)} onShowLogin={() => setShowSignup(false)} />;
+  }
+
+  // Show login page if not authenticated
+  if (!user) {
+    return <Login onLogin={handleLogin} onAdminClick={() => setShowAdminLogin(true)} onShowSignup={() => setShowSignup(true)} />;
+  }
+
+  const handleConvert = async () => {
+    if (exchangeRate && amount > 0) {
+      const result = amount * exchangeRate;
+      const targetCurrency = currencies.find((currency) => currency.code === toCurrency)
+        || LEGACY_CURRENCIES.find((currency) => currency.code === toCurrency)
+        || { code: toCurrency, name: toCurrency, flag: toCurrency.slice(0, 2) };
+      const newEntry = {
+        from: fromCurrency,
+        to: toCurrency,
+        amount,
+        result: Number(result.toFixed(2)),
+        date: new Date().toLocaleString()
+      };
+      const updatedHistory = [newEntry, ...history].slice(0, 5);
+      setHistory(updatedHistory);
+      localStorage.setItem('conversionHistory', JSON.stringify(updatedHistory));
+      
+      try {
+        await addConversion({
+          user_id: user.id,
+          from_currency: fromCurrency,
+          to_currency: toCurrency,
+          amount,
+          result: Number(result.toFixed(2)),
+          timestamp: new Date().toISOString()
+        });
+      } catch (err) {
+        console.error('Failed to store conversion history:', err);
+      }
+
+      setConversionSuccess({
+        fromCurrency,
+        toCurrency,
+        amount,
+        result: Number(result.toFixed(2)),
+        targetCurrency,
+        photoUrl: null,
+        gdpHistory: [],
+      });
+
+      const [photoUrl, gdpHistory] = await Promise.all([
+        fetchCurrencyPhoto(targetCurrency),
+        fetchGdpHistory(targetCurrency),
+      ]);
+
+      setConversionSuccess((current) => {
+        if (!current || current.toCurrency !== toCurrency) {
+          return current;
+        }
+
+        return {
+          ...current,
+          photoUrl,
+          gdpHistory,
+        };
+      });
+    }
+  };
+
+  const resetInputs = () => {
+    setAmount(1);
+    setFromCurrency('USD');
+    setToCurrency('EUR');
+    setError(null);
+    setConversionSuccess(null);
+  };
+
+  const handleAmountChange = (e) => {
+    const val = Number(e.target.value);
+    if (val < 0) {
+      setError('Amount cannot be negative');
+    } else {
+      setError(null);
+    }
+    setAmount(val);
+  };
+
+  const handleSplitTargetChange = (index, value) => {
+    setSplitTargets((current) => current.map((item, itemIndex) => (
+      itemIndex === index ? value : item
+    )));
+  };
+
+  const addSplitTarget = () => {
+    const nextCurrency = currencies.find((currency) => !splitTargets.includes(currency.code));
+    if (!nextCurrency || splitTargets.length >= 5) {
+      return;
+    }
+
+    setSplitTargets((current) => [...current, nextCurrency.code]);
+  };
+
+  const removeSplitTarget = (index) => {
+    setSplitTargets((current) => current.filter((_, itemIndex) => itemIndex !== index));
+  };
+
+  const convertedAmount = exchangeRate && amount >= 0 ? (amount * exchangeRate).toFixed(2) : '0.00';
+  const perPersonBaseAmount = splitPeople > 0 ? splitAmount / splitPeople : 0;
+  const splitPreview = splitTargets.map((code) => {
+    const currency = currencies.find((item) => item.code === code)
+      || LEGACY_CURRENCIES.find((item) => item.code === code)
+      || { code, name: code, flag: code.slice(0, 2) };
+    const rate = splitRates[code] || 0;
+
+    return {
+      ...currency,
+      amount: perPersonBaseAmount * rate,
+    };
+  });
+
+  if (activePage === 'special-features') {
+    return (
+      <SpecialFeaturesPage
+        currencies={currencies}
+        splitAmount={splitAmount}
+        setSplitAmount={setSplitAmount}
+        splitCurrency={splitCurrency}
+        setSplitCurrency={setSplitCurrency}
+        splitPeople={splitPeople}
+        setSplitPeople={setSplitPeople}
+        splitTargets={splitTargets}
+        splitLoading={splitLoading}
+        splitError={splitError}
+        splitPreview={splitPreview}
+        perPersonBaseAmount={perPersonBaseAmount}
+        handleSplitTargetChange={handleSplitTargetChange}
+        addSplitTarget={addSplitTarget}
+        removeSplitTarget={removeSplitTarget}
+        onBack={() => setActivePage('converter')}
+      />
+    );
+  }
+
+  return (
+    <div className="min-h-screen p-4 md:p-8 flex items-center justify-center">
+      <div className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 transition-all">
+        {/* Header */}
+        <div className="p-6 md:p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-gradient-to-r from-indigo-500/10 to-purple-500/10">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400">
+              Currency Converter
+            </h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Offline-ready exchange rates</p>
+          </div>
+          <div className="flex gap-2">
+            <div className="flex items-center gap-2 px-3 py-2 bg-slate-100 dark:bg-slate-800 rounded-xl">
+              <User size={16} className="text-slate-500 dark:text-slate-400" />
+              <span className="text-sm font-medium text-slate-600 dark:text-slate-300">{user.name}</span>
+            </div>
+            <button 
+              onClick={resetInputs}
+              className="p-3 rounded-2xl bg-white dark:bg-slate-800 shadow-md hover:scale-110 transition-all text-rose-500 dark:text-rose-400"
+              title="Reset All"
+            >
+              <RefreshCw size={20} />
+            </button>
+            <button 
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              className="p-3 rounded-2xl bg-white dark:bg-slate-800 shadow-md hover:scale-110 transition-all text-indigo-600 dark:text-indigo-400"
+              title="Toggle Theme"
+            >
+              {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+            </button>
+            <button 
+              onClick={handleBackToLogin}
+              className="p-3 rounded-2xl bg-white dark:bg-slate-800 shadow-md hover:scale-110 transition-all text-amber-600 dark:text-amber-400"
+              title="Back to Login (Stay Logged In)"
+            >
+              <ArrowLeft size={20} />
+            </button>
+            <button 
+              onClick={handleLogout}
+              className="p-3 rounded-2xl bg-white dark:bg-slate-800 shadow-md hover:scale-110 transition-all text-slate-600 dark:text-slate-400"
+              title="Logout"
+            >
+              <LogOut size={20} />
+            </button>
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="p-6 md:p-8 space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+            {/* Amount Input */}
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Amount</label>
+              <input 
+                type="number" 
+                value={amount}
+                onChange={handleAmountChange}
+                className={cn(
+                  "w-full p-4 rounded-2xl border-2 bg-slate-50 dark:bg-slate-950 outline-none transition-all text-lg font-medium",
+                  error && error.includes('Amount') ? "border-rose-500 focus:border-rose-600" : "border-slate-100 dark:border-slate-800 focus:border-indigo-500 dark:focus:border-indigo-500"
+                )}
+                placeholder="0.00"
+                min="0"
+              />
+            </div>
+
+            {/* From/To Selection */}
+            <div className="flex items-center gap-4">
+              <div className="flex-1 space-y-2">
+                <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">From</label>
+                <select 
+                  value={fromCurrency}
+                  onChange={(e) => setFromCurrency(e.target.value)}
+                  className="w-full p-4 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 focus:border-indigo-500 outline-none transition-all appearance-none cursor-pointer"
+                >
+                  {currencies.map(curr => (
+                    <option key={curr.code} value={curr.code}>{curr.flag} {curr.code} - {curr.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <button 
+                onClick={() => {
+                  const temp = fromCurrency;
+                  setFromCurrency(toCurrency);
+                  setToCurrency(temp);
+                }}
+                className="mt-8 p-3 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:rotate-180 transition-all duration-500 shadow-sm"
+                title="Swap Currencies"
+              >
+                <ArrowLeftRight size={20} />
+              </button>
+
+              <div className="flex-1 space-y-2">
+                <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">To</label>
+                <select 
+                  value={toCurrency}
+                  onChange={(e) => setToCurrency(e.target.value)}
+                  className="w-full p-4 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 focus:border-indigo-500 outline-none transition-all appearance-none cursor-pointer"
+                >
+                  {currencies.map(curr => (
+                    <option key={curr.code} value={curr.code}>{curr.flag} {curr.code} - {curr.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Result Display */}
+          <div className="bg-indigo-50 dark:bg-indigo-900/20 p-8 rounded-3xl border border-indigo-100 dark:border-indigo-900/50 text-center space-y-2 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 p-4 text-indigo-200 dark:text-indigo-900/40 group-hover:scale-110 transition-all">
+              <TrendingUp size={120} />
+            </div>
+            
+            <p className="text-indigo-600 dark:text-indigo-400 font-bold text-sm tracking-widest uppercase">Converted Amount</p>
+            {loading ? (
+              <div className="flex items-center justify-center py-4">
+                <RefreshCw className="animate-spin text-indigo-600" size={32} />
+              </div>
+            ) : error ? (
+              <div className="flex items-center justify-center gap-2 text-rose-500 py-4 font-medium">
+                <AlertCircle size={20} />
+                <span>{error}</span>
+              </div>
+            ) : (
+              <div className="py-2">
+                <h2 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white">
+                  {convertedAmount} <span className="text-2xl font-bold text-slate-400">{toCurrency}</span>
+                </h2>
+                <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium">
+                  1 {fromCurrency} = {exchangeRate?.toFixed(4)} {toCurrency}
+                </p>
+              </div>
+            )}
+            
+            <button 
+              onClick={handleConvert}
+              className="mt-4 px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 dark:shadow-none transition-all active:scale-95"
+            >
+              Convert and Save
+            </button>
+            <button 
+              onClick={handleShowHistory}
+              className="mt-4 ml-2 px-8 py-3 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold shadow-lg transition-all active:scale-95 flex items-center gap-2"
+            >
+              <LineChart size={18} />
+              {showHistoryChart ? 'Hide Chart' : '1 Month History'}
+            </button>
+            <button
+              onClick={() => setActivePage('special-features')}
+              className="mt-4 ml-2 px-8 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold shadow-lg transition-all active:scale-95"
+            >
+              Open Special Features
+            </button>
+          </div>
+
+          {conversionSuccess && (
+            <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-5 items-center rounded-3xl border border-emerald-200 dark:border-emerald-900/60 bg-gradient-to-r from-emerald-50 via-white to-sky-50 dark:from-emerald-950/40 dark:via-slate-900 dark:to-sky-950/30 p-5 md:p-6 shadow-lg shadow-emerald-100/60 dark:shadow-none">
+              <div className="space-y-3">
+                <div className="rounded-2xl overflow-hidden border border-white/60 dark:border-slate-800 shadow-xl shadow-sky-200/40 dark:shadow-none bg-slate-900">
+                  <img
+                    src={conversionSuccess.photoUrl || getCurrencyVisual(conversionSuccess.targetCurrency)}
+                    alt={`${conversionSuccess.targetCurrency.name} currency`}
+                    className="block w-full h-full object-cover"
+                  />
+                </div>
+                <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/80 dark:bg-slate-950/70 p-3">
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                    GDP Trend
+                  </p>
+                  {conversionSuccess.gdpHistory?.length > 0 ? (
+                    <div className="mt-2 h-28">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <RechartsLineChart data={conversionSuccess.gdpHistory} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                          <Line type="monotone" dataKey="value" stroke="#10b981" strokeWidth={2.5} dot={false} />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: document.documentElement.classList.contains('dark') ? '#0f172a' : '#fff',
+                              border: 'none',
+                              borderRadius: '12px',
+                              boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                            }}
+                            labelFormatter={(value) => `Year ${value}`}
+                            formatter={(value) => [formatGdpLabel(value), 'GDP']}
+                          />
+                          <XAxis dataKey="year" hide />
+                          <YAxis hide domain={['auto', 'auto']} />
+                        </RechartsLineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                      GDP data is unavailable for this country right now.
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-3">
+                <div className="inline-flex items-center gap-2 rounded-full bg-emerald-100 dark:bg-emerald-900/40 px-3 py-1 text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+                  <CheckCircle2 size={16} />
+                  Conversion successful
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black text-slate-900 dark:text-white">
+                    Thank you for converting with us
+                  </h3>
+                  <p className="mt-2 text-slate-600 dark:text-slate-300">
+                    Your {conversionSuccess.amount} {conversionSuccess.fromCurrency} was converted to {conversionSuccess.result} {conversionSuccess.toCurrency}. Below the currency image, you can now see a compact GDP trend for {conversionSuccess.targetCurrency.name}.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* History Chart Modal */}
+          {showHistoryChart && (
+            <div className="mt-6 bg-slate-50 dark:bg-slate-950 p-6 rounded-3xl border border-slate-100 dark:border-slate-800">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-bold text-slate-700 dark:text-slate-300">
+                  {fromCurrency} to {toCurrency} - Last 30 Days
+                </h3>
+                <button 
+                  onClick={() => setShowHistoryChart(false)}
+                  className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-all"
+                >
+                  <X size={20} className="text-slate-500" />
+                </button>
+              </div>
+              
+              {historyLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <RefreshCw className="animate-spin text-indigo-600" size={32} />
+                </div>
+              ) : historyError ? (
+                <div className="flex items-center justify-center gap-2 text-rose-500 py-4 font-medium">
+                  <AlertCircle size={20} />
+                  <span>{historyError}</span>
+                </div>
+              ) : (
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RechartsLineChart data={historyData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                      <XAxis 
+                        dataKey="date" 
+                        stroke="#94a3b8" 
+                        fontSize={12}
+                        tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      />
+                      <YAxis 
+                        stroke="#94a3b8" 
+                        fontSize={12}
+                        domain={['auto', 'auto']}
+                        tickFormatter={(value) => value.toFixed(4)}
+                      />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: document.documentElement.classList.contains('dark') ? '#1e293b' : '#fff',
+                          border: 'none',
+                          borderRadius: '12px',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                        }}
+                        labelFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                        formatter={(value) => [value.toFixed(4), `Rate (${toCurrency})`]}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="rate" 
+                        stroke="#6366f1" 
+                        strokeWidth={2}
+                        dot={false}
+                        activeDot={{ r: 6, fill: '#6366f1' }}
+                      />
+                    </RechartsLineChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+              
+              {historyData.length > 0 && (
+                <div className="mt-4 flex justify-between text-sm text-slate-500 dark:text-slate-400">
+                  <span>Low: {Math.min(...historyData.map(d => d.rate)).toFixed(4)}</span>
+                  <span>High: {Math.max(...historyData.map(d => d.rate)).toFixed(4)}</span>
+                  <span>Change: {((historyData[historyData.length - 1].rate - historyData[0].rate) / historyData[0].rate * 100).toFixed(2)}%</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* History Section */}
+          {history.length > 0 && (
+            <div className="space-y-4 pt-4">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300 font-bold">
+                  <History size={18} />
+                  <h3>Recent Conversions</h3>
+                </div>
+                <button 
+                  onClick={clearHistory}
+                  className="flex items-center gap-1 text-sm text-rose-500 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300 transition-all"
+                  title="Clear History"
+                >
+                  <Trash2 size={16} />
+                  <span>Clear</span>
+                </button>
+              </div>
+              <div className="grid gap-3">
+                {history.map((item, idx) => (
+                  <div 
+                    key={idx} 
+                    className="flex justify-between items-center p-4 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-100 dark:border-slate-800 group hover:border-indigo-300 dark:hover:border-indigo-700 transition-all"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-lg">
+                        <CheckCircle2 size={16} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold dark:text-white">
+                          {item.amount} {item.from} → {item.result} {item.to}
+                        </p>
+                        <p className="text-xs text-slate-400">{item.date}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 bg-slate-50 dark:bg-slate-950 text-center text-xs text-slate-400 font-medium">
+          Offline mode enabled - Using bundled exchange data as of {new Date().toLocaleDateString()}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default App;
+
